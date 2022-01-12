@@ -1,0 +1,316 @@
+---
+title: "Problem Set template"
+
+
+
+author: "Sandra Dai & Qianyu Shao"
+
+date: "10/11/2021"
+
+output: 
+  pdf_document:
+    number_sections: yes
+  html_document:
+    df_print: paged
+urlcolor: blue
+---
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+```
+
+<!-- .Rmd files use  markdown, a text mark up language, to provide formating.--> 
+<!--Text include within these strange arrows are comments and will not show up when you knit-->
+
+# Front matter
+This submission is my work alone and complies with the 30535 integrity policy.
+
+
+Add your initials to indicate your agreement: **Qianyu Shao & Sandra Dai **
+
+
+Late coins used this pset: 0. Late coins left: 9. 
+
+<!--You may use up to two for a given assignment.)-->
+
+# Problems
+##  Git merge conflicts
+
+1. Succinctly explain, why did you have a merge conflict?
+ because you and your partner both changed the name and Git is unable to automatically resolve differences in code between two commits.
+
+
+
+## Exploratory analysis
+### Download the data
+1.
+```{r}
+setwd("C:/Users/Administrator/Documents/GitHub/applied-problem-set-1-sandra_qianyu")
+df<-read.csv("trips_mcma.csv")
+
+```
+
+2. 
+
+```{r}
+#print(df) 
+#head(df) quickly look at the data structure
+#str(df) give the information of data type
+#glimpse(df) 
+#View(df) open a new window to show the data completely
+#summary(df) #give information about some statistics of the data
+```
+
+
+
+
+
+## Let’s see what’s inside this data set: 
+1 
+```{r}
+summary(df)
+```
+there are 20 variables, 531594 rows. Each row means an obervation. id_trip is a unique identifier for each trip
+
+2
+there are 528134 valid trips.
+31 different states are the origin
+```{r}
+names(df)
+sum(is.na(df$state_origin))
+sum(is.na(df$state_dest))
+valid_trips <-
+  df %>% filter(state_origin != 'NA' & state_dest != 'NA')
+df %>% 
+  filter(state_origin != 'NA') %>% 
+  count(state_origin)
+```
+
+
+3. List the different modes of transportation available. Show your results on descending order by the number of trips
+```{r}
+mode_trans_types <- df %>% count(mode_trans)
+mode_trans_types %>% arrange(desc(n))
+```
+4. five least common reasons for trips except NAs are pick_up_someone, health, errands, other, church.
+```{r}
+reason_rank <- df %>% filter(reason != 'NA') %>% count(reason)
+tail(arrange(reason_rank, desc(n)),5)
+
+```
+5. What proportion of the trips occur during the week and what proportion during the weekend?
+```{r}
+days_dist <- df %>% count(day)
+#week proportion
+329580/(329580+202014)
+#weekend proportion
+202014/(329580+202014)
+
+days_dist_church <- df %>% filter(reason == 'church')
+days_prop_church <- days_dist_church %>% count(day)
+# week proportion
+495/(495+1316)
+# weekend proportion
+1-(495/(495+1316))
+
+days_dist_walk <- df %>% filter(mode_trans == 'Walk')
+days_prop_walk <- days_dist_walk %>% count(day)
+# week proportion
+107913/(107913+53400)
+
+# weekend proportion
+53400/(107913+53400)
+```
+my observation finds that a greater proportion of people go to churches during weekends, and a greater proportion of people choose walk as the mode of transit during week days.
+
+6.
+The average trip time is 43.68.
+We removed NAs in "dur" and values greater than 150 min to make the plot more informative.
+
+```{r}
+df_ave<-df %>%
+  filter(!is.na(arr_hour)&
+           !is.na(arr_min)&
+           !is.na(dep_hour)&
+           !is.na(dep_min)) %>%
+  mutate(dur=(arr_hour-dep_hour)*60+arr_min-dep_min)
+
+  
+  df_ave<-df_ave %>%
+    mutate(dur=ifelse(dur>0,dur,(24-dep_hour+arr_hour)*60+arr_min-dep_min))
+
+  average_dur<-mean(df_ave$dur)
+  
+  df_ave%>%
+    filter(dur<150)%>%
+    ggplot()+
+    geom_histogram(aes(x=dur),binwidth = 5)
+
+```
+
+
+
+
+## More practical exercise
+1.
+a.221131
+b.131050 0.5926
+c.83919 0.3795 0.6404
+```{r}
+df %>%
+  filter(state_origin==9 & 
+           state_dest==9 & 
+           !is.na(mun_origin) & 
+           !is.na(mun_dest) & 
+           !is.na(dto_origin) & 
+           !is.na(dto_dest)) %>%
+  count()
+
+df%>%
+  filter(state_origin==9&
+           state_dest==9&
+           !is.na(mun_origin)&
+           !is.na(mun_dest)&
+           !is.na(dto_origin)&
+           !is.na(dto_dest)&
+           (mun_origin-mun_dest)==0)%>% 
+  count()
+
+131050/221131
+
+df%>%
+  filter(state_origin==9&
+           state_dest==9&
+           !is.na(mun_origin)&
+           !is.na(mun_dest)&
+           !is.na(dto_origin)&
+           !is.na(dto_dest)&
+           (dto_origin-dto_dest)==0)%>%
+  count()
+
+83919/221131
+83919/131050
+```
+2.
+Bike trips are shorter than car and public transportation trips, but longer than walk trips. Since there are only a few trips last beyond 150 min and majority of them are public transportation trips, we filtered out those trips longer than that to make the plot more informative.
+
+```{r}
+df_Mex<-df %>%
+  filter(state_origin==9&
+           state_dest==9&
+           !is.na(mun_origin)&
+           !is.na(mun_dest)&
+           !is.na(dto_origin)&
+           !is.na(dto_dest)) %>%
+  mutate(dur=(arr_hour-dep_hour)*60+arr_min-dep_min)
+
+df_Mex<-df_Mex%>%arrange(dur)
+
+
+df_Mex<-df_Mex%>%
+  mutate(dur=ifelse(dur>0,dur,(24-dep_hour+arr_hour)*60+arr_min-dep_min))
+
+df_Mex %>%
+  filter(dur<150) %>%
+  ggplot()+
+  geom_histogram(aes(x=dur),binwidth = 10)+
+  facet_wrap(vars(mode_trans),ncol=4)
+
+
+df_Mex %>% count(mode_trans)
+
+```
+
+3.
+Walk is more common for trips inside districts;
+Walk is more common for trips inside municipalities, too.
+A few people choose biking as transpotation method for trips inside districts and municipalities.
+```{r}
+df%>%
+  filter(state_origin==9&
+           state_dest==9&
+           !is.na(mun_origin)&
+           !is.na(mun_dest)&
+           !is.na(dto_origin)&
+           !is.na(dto_dest)&
+           (dto_origin-dto_dest)==0)%>% 
+  count(mode_trans)
+
+df%>%
+  filter(state_origin==9&
+           state_dest==9&
+           !is.na(mun_origin)&
+           !is.na(mun_dest)&
+           !is.na(dto_origin)&
+           !is.na(dto_dest)&
+           (mun_origin-mun_dest)==0)%>% 
+  count(mode_trans)
+
+
+```
+
+
+4.
+From the whole picture, there are several rush hours for trips, which are around 7,
+13 and 18.
+
+Compared between different transportation modes, we found that people who departure at early hours tend to use car and public transportation, those who departure at late hours tend to use bikes and walk. In the afternoon and night of a day, people like car and public transportation than biking or walking. Generally, they have similar distribution.
+
+```{r}
+ggplot(df_Mex)+geom_bar(aes(x=dep_hour))
+summary(df_Mex$dep_hour)
+
+ggplot(df_Mex)+geom_bar(aes(x=dep_hour))+
+  facet_wrap(vars(mode_trans),ncol=4)
+
+
+
+
+```
+
+
+
+
+5.
+No matter for female or male, there are much more people choose to walk than bike.
+As for difference in sex for biking, in general, there are more male choose to bike than female. And the age of female bikers concentrates on 25-35, while that for male spreads more widely, ranging from 25-50. 
+As for difference in sex for Wlaking, in general, there are more female choose to walk than female. And the age of male walkers concentrates on 5-15, while that for female spreads more widely, ranging from 5-10 & 20-50.
+```{r}
+df_bw<-df_Mex%>%
+  filter(mode_trans=="Bike"|mode_trans=="Walk")
+
+ggplot(df_bw)+
+  geom_histogram(aes(x=age),binwidth=5)+
+  facet_wrap(vars(mode_trans,sex),ncol=4)
+
+
+```
+
+
+
+
+6.
+From what have been discussed above, there are four main points about biking:
+First, a few people choose biking as transpotation method for trips inside districts and municipalities.
+Second, people who departure at early hours tend to use car and public transportation, those who departure at late hours tend to use bikes and walk.
+Third,
+no matter for female or male, there are much more people choose to walk than bike. And in general, there are more male choose to bike than female.
+Fourth, bike trips are shorter than car and public transportation trips, but longer than walk trips.
+
+7.
+Reasons for not choosing biking:
+a. lack of bike lanes: data indicates the distributions of bike lanes
+b. being easily stolen: data indicates the possibilities for bikes' being stolen in a given period of time
+
+
+
+
+
+
+
+
+
+
+
+
+
